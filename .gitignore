@@ -2,4 +2,4 @@ Dataset/AugmentedImages
 Dataset/AugmentedMasks
 Dataset/ScaledImages
 Dataset/ScaledMasks
-README.md
+./README.md
