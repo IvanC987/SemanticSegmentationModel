@@ -1,23 +1,19 @@
-Was planning to create diffufsion model, but decided to first create a semantic seg model based on the UNET architecture, after reading the original paper.
-Think its better to build up from this project, rather than taking a large leap into the diffusion model right away
+# Semantic Segmentation Model
 
+This project implements a **semantic segmentation model** based on the U-Net architecture. 
 
+The goal is to perform classification of images using a deep learning model. This serves as a stepping stone towards building my next project: Image Diffusion Model
 
+---
 
+## Current Features
+- U-Net implementation with encoder-decoder structure.
 
+---
 
+## Future Plans
+- Train and evaluate the model on augmented datasets.
 
+---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+Stay tuned for updates!
