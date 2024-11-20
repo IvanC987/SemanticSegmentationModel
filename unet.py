@@ -141,12 +141,8 @@ if __name__ == "__main__":
     # Remove batch dimension and permute back dimension where channel is last dim, as PIL.Image expects
     result = result.squeeze(0).permute(1, 2, 0)
 
-    # Should look like nonsense, since this is just a single pass over an initialized network.
+    # Should look like a black image, since this is just a single pass over an initialized network, where the init
+    # of parameters would be centered around 0. After ReLU and rounding, most should be extremely low values
     image = Image.fromarray(result.detach().numpy()).convert("RGB")
     image.show()
-
-    # Edit: After running, I got blank image (nothing showed up), thought it was a bug
-    # After some thought, I realized it was likely due to the initialization of parameters being centered around 0,
-    # So when passed through the network first time, resulting values would be extremely low, near 0.
-    # Thus, 'nothing' is showing up.
 

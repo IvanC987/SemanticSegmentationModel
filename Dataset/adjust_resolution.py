@@ -56,7 +56,8 @@ def scale_and_save_image(path_to_image, save_path):
     # 750 is specific to this dataset I have. Do adjust as needed
     # Although not really a good way to filter out low-res images, it works fines for this dataset
     if image.size[0] + image.size[1] > 750:
-        resized_image = image.resize(new_resolution)
+        # Make sure to use Image.NEAREST, otherwise artifacts would occur (Different color pixels due to blending)
+        resized_image = image.resize(new_resolution, Image.NEAREST)
         resized_image.save(save_path)
 
 

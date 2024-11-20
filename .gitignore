@@ -2,3 +2,5 @@ Dataset/AugmentedImages
 Dataset/AugmentedMasks
 Dataset/ScaledImages
 Dataset/ScaledMasks
+Test1_SS.py
+Test2_SS.py
