@@ -1,4 +1,3 @@
-
 import os
 import warnings
 import random
@@ -10,11 +9,16 @@ import numpy as np
 from plot_classes import find_num_classes
 
 
+def pixel_mappings(mask_dir: str, samples=100) -> tuple[dict, dict]:
+    """
+    Given the mask_dir, this function uses n-random images from the directory to determine the number of unique pixel
+    values, which would be the segmentation classes
 
+    :param mask_dir: String that points to the directory where masks are held
+    :param samples: Number of images to sample to determine unique pixel values
+    :return: Two dictionaries. First is mapping of {(R, G, B): idx}, second is the reverse, {idx: (R, G, B)}
+    """
 
-
-
-def pixel_mappings(mask_dir, samples=100):
     mask_paths = [os.path.join(mask_dir, path) for path in os.listdir(mask_dir)]
     random.shuffle(mask_paths)
 
@@ -39,7 +43,15 @@ def pixel_mappings(mask_dir, samples=100):
 
 
 
-def load_dataset(image_dir, mask_dir, extensions=(".png", ".jpg")):
+def get_dataset_paths(image_dir: str, mask_dir: str, extensions=(".png", ".jpg")) -> list:
+    """
+    Returns a list of tuples in format of [(image_path, mask_path), ...] pairs
+
+    :param image_dir: Directory where images are held
+    :param mask_dir: Directory where masks are held
+    :param extensions: Optional parameter. Specifies what extensions might be used.
+    :return:
+    """
     # This expects the image and label file names to be the same for training pair identification
     image_paths = [os.path.join(image_dir, path) for path in os.listdir(image_dir)]
     mask_paths = {os.path.join(mask_dir, path) for path in os.listdir(mask_dir)}  # Use set for faster lookups, on large ds
@@ -76,10 +88,11 @@ def convert_masks_to_classes_(masks: list[Image], pv_to_class: dict) -> torch.te
     Considering my dataset is only around 2.5k images, it's an acceptable wait time, however figured it could be
     further optimized. Just leaving this 'legacy' function here lol
 
-    :param masks:
-    :param pv_to_class:
-    :return:
+    :param masks: A list of Image objects of masks
+    :param pv_to_class: Dictionary that maps pixel values to class idx
+    :return: A tensor representation of the mask of shape (Batch, Width, Height)
     """
+
     # Takes in a list of PIL.Image objects and returns a tensor of shape (Batch, Width, Height)
     # Make sure all image resolutions are the same. Else tensors would not work
 
@@ -103,14 +116,14 @@ def convert_masks_to_classes_(masks: list[Image], pv_to_class: dict) -> torch.te
 
 
 
-def convert_masks_to_classes(masks: list[Image.Image], pv_to_class: dict) -> torch.Tensor:
+def convert_masks_to_classes(masks: list[Image], pv_to_class: dict) -> torch.Tensor:
     """
     Does the same thing as convert_masks_to_classes_(), but much faster, around 5x-10x. Core optimization from GPT
     Would take too long to type explanation, if interested, recommend asking LLM how this works
 
-    :param masks:
-    :param pv_to_class:
-    :return:
+    :param masks: A list of Image objects of masks
+    :param pv_to_class: Dictionary that maps pixel values to class idx
+    :return: A tensor representation of the mask of shape (Batch, Width, Height)
     """
 
     # Ensure all images have the same resolution
@@ -146,6 +159,14 @@ def convert_masks_to_classes(masks: list[Image.Image], pv_to_class: dict) -> tor
 
 
 def convert_pred_to_masks1(prediction: torch.tensor, class_to_pv: dict) -> Image:
+    """
+    My method for conversion. Not yet tested. Will come back later to update once model gives output prediction
+
+    :param prediction:
+    :param class_to_pv:
+    :return:
+    """
+
     # Takes in a tensor of shape (Channels, Width, Height) and returns a list of PIL.Image objects for each mask
     assert len(prediction.shape) == 3, "Given prediction must be in shape of (Channels, Width, Height)"
     C, W, H = prediction.shape
@@ -174,18 +195,15 @@ def convert_pred_to_masks1(prediction: torch.tensor, class_to_pv: dict) -> Image
 
 
 
-def convert_pred_to_masks2(prediction: torch.Tensor, class_to_pv: dict) -> Image.Image:
+def convert_pred_to_masks2(prediction: torch.Tensor, class_to_pv: dict) -> Image:
     """
-    Converts a prediction tensor of shape (Channels, Width, Height) into a PIL.Image
-    object using a class-to-RGB mapping.
+    GPT suggestion for conversion. Haven't tested it out either yet.
 
-    Args:
-        prediction (torch.Tensor): Tensor of shape (Channels, Width, Height), where channels represent class logits.
-        class_to_pv (dict): Dictionary mapping class indices to RGB pixel values (e.g., {0: (0, 0, 0), ...}).
-
-    Returns:
-        Image.Image: Converted mask as a PIL.Image in RGB format.
+    :param prediction:
+    :param class_to_pv:
+    :return:
     """
+
     # Validate input shape
     assert len(prediction.shape) == 3, "Prediction must have shape (Channels, Width, Height)"
     C, W, H = prediction.shape
@@ -240,7 +258,3 @@ if __name__ == "__main__":
     print(f"{s2-end:.1f}")
 
     assert torch.equal(r1, r2)
-
-
-
-
