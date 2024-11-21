@@ -197,56 +197,19 @@ def convert_masks_to_classes(masks: list[Image], pv_to_class: dict) -> torch.Ten
     return result
 
 
-def display_pred_vs_target():
-    pass
-
-
-def convert_pred_to_masks1(prediction: torch.tensor, class_to_pv: dict) -> Image:
+def convert_pred_to_img(prediction: torch.Tensor, class_to_pv: dict) -> Image:
     """
-    My method for conversion. Not yet tested. Will come back later to update once model gives output prediction
+    Takes in the logit tensor from unet model and returns the PIL.Image object representation
 
-    :param prediction:
-    :param class_to_pv:
-    :return:
-    """
-
-    # Takes in a tensor of shape (Channels, Width, Height) and returns a list of PIL.Image objects for each mask
-    assert len(prediction.shape) == 3, "Given prediction must be in shape of (Channels, Width, Height)"
-    C, W, H = prediction.shape
-
-    # First, permute and reshape the tensor (C, W, H) -> (W, H, C) -> (W*H, C)  where W*H would be num_pixels
-    data = prediction.permute(1, 2, 0).reshape(W*H, C)
-
-    # Now channels would be logits, so convert to probability via softmax
-    prob = nn.functional.softmax(data, dim=-1)
-
-    # Reduce dimensionality (num_pixels, channels) -> (num_pixels)
-    class_idx = torch.argmax(prob, dim=-1)
-
-
-    # It's important to note that previously, the channels dimension refers to number of classes, now we'll
-    # add it back, but this time it will be channels=3, representing not class indices but rather RGB values
-
-    # (num_pixels) -> (num_pixels, channels)  Where channels=3
-    data = [class_to_pv.get(c, (0, 0, 0)) for c in class_idx]
-
-    # Convert back into tensor and reshape accordingly
-    data = np.array(data, dtype=np.uint8).reshape(W, H, 3)
-    return Image.fromarray(data)
-
-
-def convert_pred_to_masks2(prediction: torch.Tensor, class_to_pv: dict) -> Image:
-    """
-    GPT suggestion for conversion. Haven't tested it out either yet.
-
-    :param prediction:
-    :param class_to_pv:
-    :return:
+    :param prediction: Predicted tensor by model
+    :param class_to_pv: Dictionary that maps class idx to RGB pixel values
+    :return: PIL.Image object
     """
 
     # Validate input shape
     assert len(prediction.shape) == 3, "Prediction must have shape (Channels, Width, Height)"
     C, W, H = prediction.shape
+    prediction = prediction.cpu()  # Move back to CPU
 
     # Permute tensor from (C, W, H) -> (W, H, C) for easier processing
     prediction = prediction.permute(1, 2, 0)  # Shape: (W, H, C)
@@ -267,7 +230,29 @@ def convert_pred_to_masks2(prediction: torch.Tensor, class_to_pv: dict) -> Image
     return Image.fromarray(mask_array)
 
 
-def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_iterations: int) -> dict:
+def convert_mask_to_img(mask_tensor: torch.Tensor, class_to_pv: dict) -> Image:
+    """
+    Takes in a mask tensor and returns corresponding PIL.Image object
+
+    :param mask_tensor: A tensor of shape (Width, Height) of class idx
+    :param class_to_pv: Dictionary mapping from class idx to RGB pixel values
+    :return: Corresponding PIL.Image object
+    """
+    assert len(mask_tensor.shape) == 2, "Mask tensor must have shape (Width, Height)"
+    W, H = mask_tensor.shape
+    mask_tensor = mask_tensor.cpu()  # Move back to CPU
+
+    # Map class indices to RGB values
+    # (W, H) -> (W, H, 3), where 3 represents RGB channels
+    mask_array = np.zeros((W, H, 3), dtype=np.uint8)  # Initialize array for RGB mask
+    for class_idx, rgb in class_to_pv.items():
+        mask_array[mask_tensor == class_idx] = rgb
+
+    # Convert the mask array to a PIL.Image
+    return Image.fromarray(mask_array)
+
+
+def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_iterations: int, device: str) -> dict:
     """
     Returns the evaluated loss of the model as a dictionary in format of {"train": train_loss, "val": val_loss}
 
@@ -275,6 +260,7 @@ def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_ite
     :param criterion: Criterion used (i.e. MSE, CrossEntropy, etc)
     :param dataset_loader: The custom DatasetLoader class
     :param eval_iterations: Number of eval iterations
+    :param device: Device used (i.e. cpu or cuda)
     :return: Dict in format of {"train": train_loss, "val": val_loss}
     """
 
@@ -285,6 +271,9 @@ def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_ite
         all_losses = torch.zeros(eval_iterations)
         for k in range(eval_iterations):
             image_tensors, mask_tensors = dataset_loader.get_batch(train=split == "train")
+            image_tensors = image_tensors.to(device)
+            mask_tensors = mask_tensors.to(device)
+
             logits = unet(image_tensors)
             loss = criterion(logits, mask_tensors)
             all_losses[k] = loss.item()
