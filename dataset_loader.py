@@ -38,7 +38,7 @@ class DatasetLoader:
         print(f"Length of training dataset: {len(self.train_ds)}")
         print(f"Number of training batches per epoch: {len(self.train_ds)//batch_size}")
         print(f"Length of val dataset: {len(self.val_ds)}")
-        print(f"Number of val batches per epoch: {len(self.train_ds)//batch_size}")
+        print(f"Number of val batches per epoch: {len(self.val_ds)//batch_size}")
 
     def get_batch(self, train: bool) -> tuple[torch.tensor, torch.tensor]:
         if train:

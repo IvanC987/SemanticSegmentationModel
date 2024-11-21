@@ -4,6 +4,7 @@ import random
 import time
 import torch
 from torch import nn
+from torch.nn import Module
 from PIL import Image
 import numpy as np
 from plot_classes import find_num_classes
@@ -82,6 +83,45 @@ def get_dataset_paths(image_dir: str, mask_dir: str, extensions=(".png", ".jpg")
     return dataset_paths
 
 
+def update_learning_rate(optimizer: any, training_step: int, base_lr: float, min_lr: float, warmup_steps: int,
+                         decay_factor: int) -> float:
+    """
+    Given the optimizer and other parameters, update the internal learning rate
+
+    :param optimizer: Optimizer used to train the model
+    :param training_step: Current training step
+    :param base_lr: Base learning rate
+    :param min_lr: Minimum learning rate
+    :param warmup_steps: Number of warmup steps to reach base_learning rate starting from min_lr
+    :param decay_factor: Determines how fast base_lr decays to min_lr
+    :return: None
+    """
+    if training_step < warmup_steps:
+        lr = max(training_step**2 * warmup_steps**-2 * base_lr, min_lr)
+    else:
+        lr = max(-((training_step - warmup_steps) / decay_factor)**0.5 + base_lr, min_lr)
+
+    if optimizer is None:
+        return lr  # If needed for plotting/checking
+
+    for param_group in optimizer.param_groups:
+        param_group["lr"] = lr
+
+
+def convert_image_to_tensors(images: list[Image]) -> torch.tensor:
+    """
+    Takes in a list of PIL.Image objects and return their tensor representation
+
+    :param images: A list of PIL.Image objects
+    :return: A tensor of shape (Batch, RGB, Width, Height)
+    """
+
+    width, height = images[0].size
+    tensor_list = [torch.tensor(image.getdata(), dtype=torch.float32) for image in images]
+    tensor_list = [tensor.reshape(width, height, 3).permute(2, 0, 1) for tensor in tensor_list]
+    return torch.stack(tensor_list, dim=0)
+
+
 def convert_masks_to_classes_(masks: list[Image], pv_to_class: dict) -> torch.tensor:
     """
     I created this method, but it's not very efficient. Each image takes roughly 0.5 seconds to process.
@@ -157,6 +197,9 @@ def convert_masks_to_classes(masks: list[Image], pv_to_class: dict) -> torch.Ten
     return result
 
 
+def display_pred_vs_target():
+    pass
+
 
 def convert_pred_to_masks1(prediction: torch.tensor, class_to_pv: dict) -> Image:
     """
@@ -188,11 +231,8 @@ def convert_pred_to_masks1(prediction: torch.tensor, class_to_pv: dict) -> Image
     data = [class_to_pv.get(c, (0, 0, 0)) for c in class_idx]
 
     # Convert back into tensor and reshape accordingly
-    data = np.array(data).reshape(W, H, 3)
-
+    data = np.array(data, dtype=np.uint8).reshape(W, H, 3)
     return Image.fromarray(data)
-
-
 
 
 def convert_pred_to_masks2(prediction: torch.Tensor, class_to_pv: dict) -> Image:
@@ -227,6 +267,32 @@ def convert_pred_to_masks2(prediction: torch.Tensor, class_to_pv: dict) -> Image
     return Image.fromarray(mask_array)
 
 
+def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_iterations: int) -> dict:
+    """
+    Returns the evaluated loss of the model as a dictionary in format of {"train": train_loss, "val": val_loss}
+
+    :param unet: PyTorch Model
+    :param criterion: Criterion used (i.e. MSE, CrossEntropy, etc)
+    :param dataset_loader: The custom DatasetLoader class
+    :param eval_iterations: Number of eval iterations
+    :return: Dict in format of {"train": train_loss, "val": val_loss}
+    """
+
+    out = {}
+    unet.eval()
+
+    for split in ["train", "val"]:
+        all_losses = torch.zeros(eval_iterations)
+        for k in range(eval_iterations):
+            image_tensors, mask_tensors = dataset_loader.get_batch(train=split == "train")
+            logits = unet(image_tensors)
+            loss = criterion(logits, mask_tensors)
+            all_losses[k] = loss.item()
+
+        out[split] = torch.mean(all_losses)
+
+    unet.train()
+    return out
 
 
 
