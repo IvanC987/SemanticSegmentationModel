@@ -3,59 +3,83 @@
 This **`Datasets`** folder contains the following subfolders and files:
 
 ## Folder Structure
-- `AugmentedImages` 
-Folder containing all the images along with their corresponding augmentations to artificially increase the dataset size
-- `AugmentedMasks`
-Folder containing the corresponding masks with respect to images in `AugmentedImages`
-- `OriginalImages`
-Original images from the `Cityscapes` dataset found on their site. It has been filtered and renamed for processing
-- `OriginalImages_Old`
-Original images from the `PASCAL VOC 2007` dataset found on Kaggle. It has been filtered and renamed for processing
-- `OriginalMasks`
-Original masks that corresponds to images in `OriginalImages`
-- `OriginalMasks_Old`
-Original masks that corresponds to images in `OriginalImages_Old`
-- `README_Images`
-Images used in the README files
-- `ScaledImages`
-Images that are scaled to a certain, fixed, resolution in preparation for training
-- `ScaledMasks`
-Corresponding masks that are also scaled
-- `adjust_resolution.py`
-Script that takes images from `Original` folders and scales them accordingly based on the dataset resolution distribution, saved scaled output to `Scaled` folders
-- `data_augmentation.py`
-Script that takes images from `Scaled` folders and applies a series of augmentation and saves it to `Augmented` folders
-- `random_sampling.py`
-Script where given directory path to Images and Masks folders, will randomly sample and display images. Used to verify the folder's images/masks are correctly aligned and adjusted/augmented
+- **`AugmentedImages`**  
+  Folder containing all the images along with their corresponding augmentations to artificially increase the dataset size.
+- **`AugmentedMasks`**  
+  Folder containing the corresponding masks with respect to images in `AugmentedImages`.
+- **`OriginalImages`**  
+  Original images from the `Cityscapes` dataset found on their site. It has been filtered and renamed for processing.
+- **`OriginalImages_Old`**  
+  Original images from the `PASCAL VOC 2007` dataset found on Kaggle. It has been filtered and renamed for processing.
+- **`OriginalMasks`**  
+  Original masks that correspond to images in `OriginalImages`.
+- **`OriginalMasks_Old`**  
+  Original masks that correspond to images in `OriginalImages_Old`.
+- **`README_Images`**  
+  Images used in the README files.
+- **`ScaledImages`**  
+  Images that are scaled to a certain, fixed resolution in preparation for training.
+- **`ScaledMasks`**  
+  Corresponding masks that are also scaled.
+- **`adjust_resolution.py`**  
+  Takes images from `Original` folders and scales them accordingly based on the dataset resolution distribution, saving scaled output to `Scaled` folders.
+- **`data_augmentation.py`**  
+  Script that takes images from `Scaled` folders and applies a series of augmentations, saving results to `Augmented` folders.
+- **`filter_classes.py`**  
+  Given directory paths to Images and Masks folders, will filter and remove image-mask pairs of chosen rare classes. Filter/Removal is made in place.
+- **`random_sampling.py`**  
+  Given directory paths to Images and Masks folders, will randomly sample and display images. Used to verify the folder's images/masks are correctly aligned and adjusted/augmented.
 
+---
 
-Note that the `Original`, `Scaled`, and `Augmented` folders are **not** available. 
-This is due to the `Cityscapes` dataset license agreement, where one must sign up on their site to gain access. 
+## Dataset Preparation
 
-If wish to train a model using this pipeline, create a `OriginalImages` and `OriginalMasks` folder, add in corresponding image and mask pairs, making sure the name of Image matches exactly with Mask.
-Run `adjust_resolution.py` and `data_augmentation.py` sequentially to create and populate the corresponding `Scaled` and `Augmented` folders. 
+### General Notes:
+- The `Original`, `Scaled`, and `Augmented` folders are **not** available.  
+  This is due to the `Cityscapes` dataset license agreement, where one must sign up on their site to gain access. 
 
-Note- It's suggested to run `plot_classes.py` file after running `adjust_resolution.py` to get a look at the class representation of the masks. 
-In particular, it's useful to check if there are major class imbalances. If so, note the pixel values and use `filter_classes.py` to filter out and remove image-mask pairs that contains rare class indices to eliminate from dataset if desired.
-The filter/remove is done in-place within the `Scaled` directories. 
+### Steps to Prepare the Dataset:
+1. **Create the `OriginalImages` and `OriginalMasks` folders**  
+   Add in corresponding image and mask pairs, ensuring that the name of each Image matches exactly with its Mask.
 
+2. **Run `adjust_resolution.py`**  
+   Scales the images and masks based on the dataset resolution distribution, saving the output to the `Scaled` folders.
 
-Notes on the dataset: 
-Originally intended on using the `PASCAL VOC 2007` dataset found on Kaggle. 
-However, it seems like the segmentation mask for the corresponding images are severely lacking. 
-Of the 5011 provided JPEG images, only 422 Segmentation Masks are available. 
-Instead of using another dataset that's larger, I decided to proceed with this dataset, thinking that applying data augmentation to artificially increase the dataset size might be an interesting approach, as done by others.
-But things didn't quite go as planned. 422 Image-Mask pairs is not enough for 22 classes (20 classes + 1 background + 1 outline), so I switched to `Cityscapes`
+3. **(Optional) Run `plot_classes.py`**  
+   This helps analyze the class representation of the masks.  
+   If there are major class imbalances, note the pixel values and use `filter_classes.py` to remove image-mask pairs with rare class indices.
 
-`PASCAL VOC 2007` Dataset Source: https://www.kaggle.com/datasets/lottefontaine/voc-2007
-`Cityscapes` Dataset Source: https://www.cityscapes-dataset.com/
+4. **Run `data_augmentation.py`**  
+   Choose and apply augmentations to the images and masks, saving results to the `Augmented` folders.
 
+---
 
-Notes: 
-1. Originally intended to use `PASCAL VOC 2007` but switched to `Cityscapes`
-2. Naming convention of augmented images is detailed in `DataAugmentation.py`
+## Notes on the Dataset
 
+### Original Dataset Choice:
+1. **`PASCAL VOC 2007` Dataset**  
+   - Initially intended to use this dataset.  
+   - However, the segmentation masks were severely lacking.  
+   - Out of 5011 provided JPEG images, only 422 Segmentation Masks were available.  
 
+2. **`Cityscapes` Dataset**  
+   - Switched to this dataset due to its larger size and better segmentation coverage.  
 
-`Cityscapes` Dataset Citation: 
+### Dataset Sources:
+- **`PASCAL VOC 2007` Dataset**: [Kaggle Link](https://www.kaggle.com/datasets/lottefontaine/voc-2007)  
+- **`Cityscapes` Dataset**: [Cityscapes Website](https://www.cityscapes-dataset.com/)
+
+---
+
+## Notes:
+1. **Naming Convention**  
+   Naming convention of augmented images is detailed in `DataAugmentation.py`.
+
+2. **Dataset Licensing**  
+   The `Cityscapes` dataset is used under its terms of use.  
+   For more details, visit the [Cityscapes License](https://www.cityscapes-dataset.com/license/).
+
+---
+
+## Citation for `Cityscapes` Dataset
 M. Cordts, M. Omran, S. Ramos, T. Rehfeld, M. Enzweiler, R. Benenson, U. Franke, S. Roth, and B. Schiele, “The Cityscapes Dataset for Semantic Urban Scene Understanding,” in Proc. of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2016. [Bibtex]
