@@ -22,8 +22,10 @@ training_iterations = 1000
 eval_interval = 25
 eval_iterations = 3
 
-# Display image of pred_mask and actual_mask x times total during training, where x is the denominator
-show_pred_interval = training_iterations//50
+save_model_interval = 500  # Interval of when to save the UNET model
+
+# Saves image of pred_mask and actual_mask x times total during training, where x is the denominator
+save_pred_interval = training_iterations//50
 
 # Fine-tuning lrs and warmup steps can be complicated, depending on lvl of detail.
 # I'm just choosing what I think is decent here. Feel free to adjust.
@@ -105,7 +107,7 @@ for step in range(training_iterations):
         start = time.time()
 
 
-    if pred_steps >= show_pred_interval:
+    if pred_steps >= save_pred_interval:
         print(f"Saving predictions/labels at {step=}")
         pred_mask = convert_pred_to_img(prediction=logits[0], class_to_pv=class_to_pv)  # Just the first prediction
         pred_mask.save(os.path.join(pred_dir, f"{step}-predicted.jpg"))
@@ -116,6 +118,9 @@ for step in range(training_iterations):
         pred_steps = 0
 
     pred_steps += 1
+s
+    if step % save_model_interval == 0 and step != 0:
+        torch.save(unet.state_dict(), f"unet_model_{step}.pth")
 
 
 torch.save(unet.state_dict(), "unet_model.pth")

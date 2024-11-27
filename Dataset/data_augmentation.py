@@ -6,14 +6,17 @@ from adjust_resolution import clear_directory
 
 
 """
-Currently only have around 400 images, so for the data augmentation I'm currently using 5 methods:
+Currently have 5 methods:
 1. Horizontally flipping the image
 2. Adjusting the brightness/hue (colorfulness?) of the image
 3. Zoom and Rotate the image
 4. Adding Gaussian Noise to the image
 5. Applying a subtle Gaussian Blur 
 
-This would yield an additional 5x amount of images, totaling around 2400 images, which might be enough (probably?)
+
+Note that only horizontal flip is used. 
+That's because the original dataset I used was quite small, hence the multiple augmentation methods. 
+Currently using the Cityscape DS, which is fairly large, much larger than the original one, so only horizontal flip is used
 
 
 As for the naming of the augmented images, it's based on the original image's name. 
@@ -105,39 +108,41 @@ def augment_images():
 
 
     for i in range(len(all_images)):
-        if i % 10 == 0:
+        if i % 100 == 0:
             print(f"{i} images augmented!")
 
         img = Image.open(all_images[i]).convert("RGB")
         msk = Image.open(all_masks[i]).convert("RGB")
 
 
-        _, basename = os.path.split(all_images[i])  # i.e. returns ('./JPEGImages', '001.jpg') given './JPEGImages/001.jpg'
-        basename = basename.split(".")[0]  # Now left with the image number, such as 001, 002, etc.
+        _, img_path = os.path.split(all_images[i])  # i.e. returns ('./JPEGImages', '001.jpg') given './JPEGImages/001.jpg'
+        _, msk_path = os.path.split(all_masks[i])
+        img_basename, img_ext = os.path.splitext(os.path.basename(img_path))
+        msk_basename, msk_ext = os.path.splitext(os.path.basename(msk_path))
 
         # Images are JPEG and masks are PNG
-        img.save(os.path.join(aug_image_dir, f"{basename}_0.jpg"))
-        msk.save(os.path.join(aug_mask_dir, f"{basename}_0.png"))
+        img.save(os.path.join(aug_image_dir, f"{img_basename}_0{img_ext}"))
+        msk.save(os.path.join(aug_mask_dir, f"{msk_basename}_0{msk_ext}"))
 
         h_img, h_msk = horizontal_flip(img, msk)
-        h_img.save(os.path.join(aug_image_dir, f"{basename}_1.jpg"))
-        h_msk.save(os.path.join(aug_mask_dir, f"{basename}_1.png"))
+        h_img.save(os.path.join(aug_image_dir, f"{img_basename}_1{img_ext}"))
+        h_msk.save(os.path.join(aug_mask_dir, f"{msk_basename}_1{msk_ext}"))
 
-        bc_img = adjust_brightness_and_color(img)
-        bc_img.save(os.path.join(aug_image_dir, f"{basename}_2.jpg"))
-        msk.save(os.path.join(aug_mask_dir, f"{basename}_2.png"))
-
-        zr_img, zr_msk = zoom_and_rotate(img, msk)
-        zr_img.save(os.path.join(aug_image_dir, f"{basename}_3.jpg"))
-        zr_msk.save(os.path.join(aug_mask_dir, f"{basename}_3.png"))
-
-        gn_img = gaussian_noise(img)
-        gn_img.save(os.path.join(aug_image_dir, f"{basename}_4.jpg"))
-        msk.save(os.path.join(aug_mask_dir, f"{basename}_4.png"))
-
-        gb_img = gaussian_blur(img)
-        gb_img.save(os.path.join(aug_image_dir, f"{basename}_5.jpg"))
-        msk.save(os.path.join(aug_mask_dir, f"{basename}_5.png"))
+        # bc_img = adjust_brightness_and_color(img)
+        # bc_img.save(os.path.join(aug_image_dir, f"{img_basename}_2{img_ext}"))
+        # msk.save(os.path.join(aug_mask_dir, f"{msk_basename}_2{msk_ext}"))
+        #
+        # zr_img, zr_msk = zoom_and_rotate(img, msk)
+        # zr_img.save(os.path.join(aug_image_dir, f"{img_basename}_3{img_ext}"))
+        # zr_msk.save(os.path.join(aug_mask_dir, f"{msk_basename}_3{msk_ext}"))
+        #
+        # gn_img = gaussian_noise(img)
+        # gn_img.save(os.path.join(aug_image_dir, f"{img_basename}_4{img_ext}"))
+        # msk.save(os.path.join(aug_mask_dir, f"{msk_basename}_4{msk_ext}"))
+        #
+        # gb_img = gaussian_blur(img)
+        # gb_img.save(os.path.join(aug_image_dir, f"{img_basename}_5{img_ext}"))
+        # msk.save(os.path.join(aug_mask_dir, f"{msk_basename}_5{msk_ext}"))
 
 
 if __name__ == "__main__":

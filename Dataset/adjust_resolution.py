@@ -17,7 +17,13 @@ Chose 448x448 due to the following reasons:
 
 def plot_resolution():
     sizes = []
+
+    print("Now plotting image...")
+
     for i in range(len(all_images)):
+        if i % 100 == 0:
+            print(f"At index {i=}")
+
         img = Image.open(all_images[i]).convert("RGB")
         msk = Image.open(all_masks[i]).convert("RGB")
 
@@ -70,7 +76,13 @@ if __name__ == "__main__":
 
     assert len(all_images) == len(all_masks), "All images should have a corresponding mask!"
 
-    plot_resolution()
+    plot_res = input("Plot resolution? [Y/N]: ")
+    while plot_res.lower() not in ["y", "n"]:
+        print("Invalid input")
+        plot_res = input("Plot resolution? [Y/N]: ")
+
+    if plot_res.lower() == "y":
+        plot_resolution()
 
 
     output_img_dir = "./ScaledImages/"
@@ -82,18 +94,30 @@ if __name__ == "__main__":
     clear_directory(output_img_dir)
     clear_directory(output_msk_dir)
 
-    new_resolution = (448, 448)
+    new_width = input("Enter new width: ")
+    while not new_width.isnumeric() or int(new_width) < 16:
+        print("Invalid input")
+        new_width = input("Enter new width: ")
+
+    new_height = input("Enter new height: ")
+    while not new_height.isnumeric() or int(new_height) < 16:
+        print("Invalid input")
+        new_height = input("Enter new height: ")
+
+
+    new_resolution = (int(new_width), int(new_height))
 
     index = 0
     for img_path, mask_path in zip(all_images, all_masks):
-        if index % 10 == 0:
+        if index % 100 == 0:
             print(f"Processing image {index=}")
         index += 1
 
-        basename = os.path.splitext(os.path.basename(img_path))[0]
+        img_basename, img_ext = os.path.splitext(os.path.basename(img_path))
+        msk_basename, msk_ext = os.path.splitext(os.path.basename(mask_path))
 
-        img_save_path = os.path.join(output_img_dir, f"{basename}.jpg")
-        msk_save_path = os.path.join(output_msk_dir, f"{basename}.png")
+        img_save_path = os.path.join(output_img_dir, f"{img_basename}{img_ext}")
+        msk_save_path = os.path.join(output_msk_dir, f"{msk_basename}{msk_ext}")
 
         scale_and_save_image(img_path, img_save_path)
         scale_and_save_image(mask_path, msk_save_path)
