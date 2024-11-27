@@ -7,3 +7,4 @@ Dataset/OriginalMasks
 SavedPredictions
 Test1_SS.py
 Test2_SS.py
+*.pth
