@@ -191,8 +191,8 @@ def convert_masks_to_classes(masks: list[Image], pv_to_class: dict) -> torch.Ten
     # Perform matmul to map matches to class indices
     mapped_classes = matches @ class_indices  # Shape: (num_pixels)
 
-    # Reshape back to (Batch, Height, Width)
-    result = mapped_classes.view(data.shape[0], height, width).to(torch.long)
+    # Reshape back to (Batch, Width, Height)
+    result = mapped_classes.view(data.shape[0], width, height).to(torch.long)
 
     return result
 
@@ -252,14 +252,17 @@ def convert_mask_to_img(mask_tensor: torch.Tensor, class_to_pv: dict) -> Image:
     return Image.fromarray(mask_array)
 
 
-def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_iterations: int, device: str) -> dict:
+def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_iterations: int, num_classes: int, device: str) -> dict:
     """
-    Returns the evaluated loss of the model as a dictionary in format of {"train": train_loss, "val": val_loss}
+    Returns the evaluated loss of the model as a dictionary in format of {"train": train_loss, "val": val_loss, "ious": all_ious, "mean_ious": mean_ious}
+
+    IoU = Intersection over Union, a common metric in semantic segmentation
 
     :param unet: PyTorch Model
     :param criterion: Criterion used (i.e. MSE, CrossEntropy, etc)
     :param dataset_loader: The custom DatasetLoader class
     :param eval_iterations: Number of eval iterations
+    :param num_classes: Number of classes
     :param device: Device used (i.e. cpu or cuda)
     :return: Dict in format of {"train": train_loss, "val": val_loss}
     """
@@ -267,6 +270,8 @@ def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_ite
     out = {}
     unet.eval()
 
+    ious = torch.zeros(num_classes, dtype=torch.float, device=device)
+    total_batches = 0
     for split in ["train", "val"]:
         all_losses = torch.zeros(eval_iterations)
         for k in range(eval_iterations):
@@ -278,11 +283,32 @@ def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_ite
             loss = criterion(logits, mask_tensors)
             all_losses[k] = loss.item()
 
+            # Calculate IoU metric
+            iou_metric(pred_tensor=logits, mask_tensor=mask_tensors, num_classes=num_classes, ious=ious, device=device)
+            total_batches += len(mask_tensors)
+
         out[split] = torch.mean(all_losses)
+
+    ious /= total_batches  # Average out the ious
+    out["ious"] = ious  # Save ious for each class
+    out["mean_ious"] = torch.mean(ious)  #
 
     unet.train()
     return out
 
+
+def iou_metric(pred_tensor, mask_tensor, num_classes, ious, device):
+
+    assert len(pred_tensor.shape) == 4 and len(mask_tensor.shape) == 3, \
+        f"Prediction tensor should be of shape (B, C, W, H) and Mask tensor should be of shape (B, W, H)!"
+
+    pred_tensor = nn.functional.softmax(pred_tensor, dim=1)  # Softmax across the channels dimension
+    pred_tensor = torch.argmax(pred_tensor, dim=1)  # Get the highest probability
+
+    for c in range(num_classes):
+        intersection = torch.sum((pred_tensor == c) & (mask_tensor == c))
+        union = torch.sum((pred_tensor == c) | (mask_tensor == c))
+        ious += (intersection.float() / (union.float() if union.float() != 0 else torch.tensor(1e-6, device=device)))
 
 
 if __name__ == "__main__":

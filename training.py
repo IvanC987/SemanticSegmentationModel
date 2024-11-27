@@ -18,9 +18,9 @@ print(f"Now using {device=}\n")
 
 batch_size = 10
 
-training_iterations = 1000
-eval_interval = 25
-eval_iterations = 3
+training_iterations = 1700
+eval_interval = 50
+eval_iterations = 5
 
 save_model_interval = 500  # Interval of when to save the UNET model
 
@@ -35,6 +35,7 @@ min_lr = 1e-4
 warmup_steps = 100
 decay_factor = 5e8
 
+display_all_ious = True  # Print out IoU of each class during evaluation
 
 image_dir = r"./Dataset/AugmentedImages"
 mask_dir = r"./Dataset/AugmentedMasks"
@@ -76,6 +77,11 @@ else:
 print("\n\n")
 
 
+print("******************")
+print("Entering training loop")
+print("******************")
+print("\n\n\n")
+
 
 start = time.time()
 pred_steps = 1  # This is just used for displaying mask at certain intervals
@@ -90,6 +96,7 @@ for step in range(training_iterations):
     image_tensors = image_tensors.to(device)
     mask_tensors = mask_tensors.to(device)
 
+
     # Pass the image tensors into the model, which will return logits tensor of shape (Batch, Channels, Width, Height)
     logits = unet(image_tensors)
 
@@ -102,8 +109,18 @@ for step in range(training_iterations):
 
 
     if step % eval_interval == 0 or step == training_iterations - 1:
-        out = evaluate_loss(unet=unet, criterion=criterion, dataset_loader=dataset_loader, eval_iterations=eval_iterations, device=device)
+        out = evaluate_loss(unet=unet, criterion=criterion, dataset_loader=dataset_loader,
+                            eval_iterations=eval_iterations, num_classes=num_classes, device=device)
+
         print(f"{step=}   |   train_loss={out['train']:.4f}   |   val_loss={out['val']:.4f}   |   time={int(time.time()-start)}s")
+        print(f"mean_iou={out['mean_ious']:.4f}")
+
+        if display_all_ious:
+            all_ious = []
+            for iou in out["ious"]:
+                all_ious.append(round(iou, 4))
+            print(f"all_ious={all_ious}")
+
         start = time.time()
 
 
@@ -118,7 +135,7 @@ for step in range(training_iterations):
         pred_steps = 0
 
     pred_steps += 1
-s
+
     if step % save_model_interval == 0 and step != 0:
         torch.save(unet.state_dict(), f"unet_model_{step}.pth")
 
