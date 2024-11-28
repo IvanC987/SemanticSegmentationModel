@@ -16,13 +16,13 @@ from dataset_loader import DatasetLoader
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Now using {device=}\n")
 
-batch_size = 10
+batch_size = 12
 
-training_iterations = 1700
+training_iterations = 1500
 eval_interval = 50
 eval_iterations = 5
 
-save_model_interval = 500  # Interval of when to save the UNET model
+save_model_interval = 400  # Interval of when to save the UNET model
 
 # Saves image of pred_mask and actual_mask x times total during training, where x is the denominator
 save_pred_interval = training_iterations//50
@@ -60,7 +60,7 @@ dataset_loader = DatasetLoader(image_dir=image_dir, mask_dir=mask_dir, pv_to_cla
 
 unet = UNET(in_channels=3, out_channels=num_classes).to(device)
 optimizer = AdamW(unet.parameters())
-criterion = CombinedLoss(num_classes=num_classes, average="macro")
+criterion = CombinedLoss(num_classes=num_classes, average="macro").to(device)
 
 
 print("\n\n")

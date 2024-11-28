@@ -21,7 +21,12 @@ class CombinedLoss(nn.Module):
         pred = torch.argmax(logits, dim=1)  # Take the highest "probability"
         dice_loss = 1 - self.dice(pred, masks)
 
-        alpha = cross_entropy_loss / dice_loss
-        final_loss = cross_entropy_loss + alpha * dice_loss
-        print(f"{alpha=:.4f}, {cross_entropy_loss=:.4f}, {dice_loss=:.4f}, {final_loss=:.4f}")
+        # Although weighs the two equally, dice gets artificially lowered to match CE, which is not exactly desirable
+        # alpha = cross_entropy_loss / (dice_loss + 1e-6)
+        # final_loss = cross_entropy_loss + alpha * dice_loss
+        # print(f"{alpha=:.4f}, {cross_entropy_loss=:.4f}, {dice_loss=:.4f}, {final_loss=:.4f}")
+
+        # Based on my dataset's training output, a static 2x contribution to dice seems like a good value
+        final_loss = cross_entropy_loss + 2 * dice_loss
+        print(f"{cross_entropy_loss=:.4f}, {dice_loss=:.4f}, {final_loss=:.4f}")
         return final_loss
