@@ -207,7 +207,6 @@ def convert_pred_to_img(prediction: torch.Tensor, class_to_pv: dict) -> Image:
 
     # Validate input shape
     assert len(prediction.shape) == 3, "Prediction must have shape (Channels, Height, Width)"
-    print(prediction.shape)
     C, H, W = prediction.shape
     prediction = prediction.cpu()  # Move back to CPU
 
@@ -226,7 +225,6 @@ def convert_pred_to_img(prediction: torch.Tensor, class_to_pv: dict) -> Image:
     for class_idx, rgb in class_to_pv.items():
         mask_array[class_indices == class_idx] = rgb
 
-    print(mask_array.shape)
     # Convert the mask array to a PIL.Image
     return Image.fromarray(mask_array)
 
@@ -240,8 +238,6 @@ def convert_mask_to_img(mask_tensor: torch.Tensor, class_to_pv: dict) -> Image:
     :return: Corresponding PIL.Image object
     """
     assert len(mask_tensor.shape) == 2, "Mask tensor must have shape (Height, Width)"
-    print(2)
-    print(mask_tensor.shape)
     H, W = mask_tensor.shape
     mask_tensor = mask_tensor.cpu()  # Move back to CPU
 
@@ -251,7 +247,6 @@ def convert_mask_to_img(mask_tensor: torch.Tensor, class_to_pv: dict) -> Image:
     for class_idx, rgb in class_to_pv.items():
         mask_array[mask_tensor == class_idx] = rgb
 
-    print(mask_array.shape)
     # Convert the mask array to a PIL.Image
     return Image.fromarray(mask_array)
 
@@ -295,7 +290,10 @@ def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_ite
 
     ious /= total_batches  # Average out the ious
     out["ious"] = ious  # Save ious for each class
-    out["mean_ious"] = torch.mean(ious)  #
+
+    valid_ious = ious[ious > 0]  # Select IoU values greater than 0, so that classes that didn't appear doesn't drag down mean
+    mean_ious = torch.mean(valid_ious) if len(valid_ious) > 0 else torch.tensor(0.0, device=device)
+    out["mean_ious"] = mean_ious
 
     unet.train()
     return out

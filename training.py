@@ -2,7 +2,7 @@ import os
 import time
 import torch
 from torch.optim import AdamW
-from torch.nn import CrossEntropyLoss
+from combined_loss import CombinedLoss
 from unet import UNET
 from helper_functions import pixel_mappings, update_learning_rate, convert_pred_to_img, convert_mask_to_img, evaluate_loss
 from dataset_loader import DatasetLoader
@@ -58,12 +58,9 @@ dataset_loader = DatasetLoader(image_dir=image_dir, mask_dir=mask_dir, pv_to_cla
 
 
 
-
-
 unet = UNET(in_channels=3, out_channels=num_classes).to(device)
 optimizer = AdamW(unet.parameters())
-criterion = CrossEntropyLoss()
-
+criterion = CombinedLoss(num_classes=num_classes, average="macro")
 
 
 print("\n\n")
@@ -99,9 +96,8 @@ for step in range(training_iterations):
 
     # Pass the image tensors into the model, which will return logits tensor of shape (Batch, Channels, Width, Height)
     logits = unet(image_tensors)
-
-
     loss = criterion(logits, mask_tensors)  # First, calculate the loss
+
     optimizer.zero_grad(set_to_none=True)  # Set previous gradients to none
     loss.backward()  # Backprop
     torch.nn.utils.clip_grad_norm_(unet.parameters(), 1.0)  # Clip grads for stable training
