@@ -84,7 +84,7 @@ print("\n\n\n")
 
 
 start = time.time()
-pred_steps = 31  # This is just used for displaying mask at certain intervals
+pred_steps = 1  # This is just used for displaying mask at certain intervals
 
 for step in range(training_iterations):
     update_learning_rate(optimizer=optimizer, training_step=step, base_lr=base_lr, min_lr=min_lr,
@@ -132,7 +132,6 @@ for step in range(training_iterations):
 
         label_mask = convert_mask_to_img(mask_tensor=mask_tensors[0], class_to_pv=class_to_pv)
         label_mask.save(os.path.join(pred_dir, f"{step}-label.jpg"))
-        exit()
         pred_steps = 0
 
     pred_steps += 1

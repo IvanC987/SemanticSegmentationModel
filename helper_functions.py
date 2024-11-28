@@ -288,7 +288,7 @@ def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_ite
             all_losses[k] = loss.item()
 
             # Calculate IoU metric
-            iou_metric(pred_tensor=logits, mask_tensor=mask_tensors, num_classes=num_classes, ious=ious, device=device)
+            iou_metric(pred_tensor=logits, mask_tensor=mask_tensors, num_classes=num_classes, ious=ious)
             total_batches += len(mask_tensors)
 
         out[split] = torch.mean(all_losses)
