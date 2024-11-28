@@ -113,7 +113,7 @@ def convert_image_to_tensors(images: list[Image]) -> torch.tensor:
     Takes in a list of PIL.Image objects and return their tensor representation
 
     :param images: A list of PIL.Image objects
-    :return: A tensor of shape (Batch, RGB, Width, Height)
+    :return: A tensor of shape (Batch, RGB, Height, Width)
     """
 
     width, height = images[0].size
@@ -125,15 +125,14 @@ def convert_image_to_tensors(images: list[Image]) -> torch.tensor:
 def convert_masks_to_classes_(masks: list[Image], pv_to_class: dict) -> torch.tensor:
     """
     I created this method, but it's not very efficient. Each image takes roughly 0.5 seconds to process.
-    Considering my dataset is only around 2.5k images, it's an acceptable wait time, however figured it could be
-    further optimized. Just leaving this 'legacy' function here lol
+    Just leaving this 'legacy' function here lol
 
     :param masks: A list of Image objects of masks
     :param pv_to_class: Dictionary that maps pixel values to class idx
-    :return: A tensor representation of the mask of shape (Batch, Width, Height)
+    :return: A tensor representation of the mask of shape (Batch, Height, Width)
     """
 
-    # Takes in a list of PIL.Image objects and returns a tensor of shape (Batch, Width, Height)
+    # Takes in a list of PIL.Image objects and returns a tensor of shape (Batch, Height, Width)
     # Make sure all image resolutions are the same. Else tensors would not work
 
     width, height = masks[0].size
@@ -141,16 +140,16 @@ def convert_masks_to_classes_(masks: list[Image], pv_to_class: dict) -> torch.te
     tensor_list = [torch.tensor(mask.getdata()).reshape(height, width, 3) for mask in masks]
     data = torch.stack(tensor_list, dim=0)  # Stack along 0th dimension as batch dimension
 
-    # Now, data is of shape (Batch, Width, Height, Channels)
+    # Now, data is of shape (Batch, Height, Width, Channels)
     # Replace the pixel values with class indices
-    shape = data.shape[:-1]  # (Batch, Width, Height)
+    shape = data.shape[:-1]  # (Batch, Height, Width)
     flattened_tensor = data.reshape(-1, data.shape[-1])  # Flatten into 2d tensor, keeping only channel dim intact
 
     # Now replace the pixel values with class indices
-    class_indices = [pv_to_class.get(tuple(t.tolist()), 0) for t in flattened_tensor]  # Now shape (Batch*Width*Height)
+    class_indices = [pv_to_class.get(tuple(t.tolist()), 0) for t in flattened_tensor]  # Now shape (Batch*Height*Width)
 
     # Reshape back the data
-    data = torch.tensor(class_indices, dtype=torch.long).view(*shape)  # (Batch, Width, Height)
+    data = torch.tensor(class_indices, dtype=torch.long).view(*shape)  # (Batch, Height, Width)
 
     return data
 
@@ -163,13 +162,13 @@ def convert_masks_to_classes(masks: list[Image], pv_to_class: dict) -> torch.Ten
 
     :param masks: A list of Image objects of masks
     :param pv_to_class: Dictionary that maps pixel values to class idx
-    :return: A tensor representation of the mask of shape (Batch, Width, Height)
+    :return: A tensor representation of the mask of shape (Batch, Height, Width)
     """
 
     # Ensure all images have the same resolution
     width, height = masks[0].size
 
-    # Convert images to tensor of shape (Batch, Width, Height, Channels)
+    # Convert images to tensor of shape (Batch, Height, Width, Channels)
     tensor_list = [torch.tensor(mask.getdata()).reshape(height, width, 3) for mask in masks]
     data = torch.stack(tensor_list, dim=0)  # Stack along 0th dimension as batch dimension
 
@@ -191,7 +190,7 @@ def convert_masks_to_classes(masks: list[Image], pv_to_class: dict) -> torch.Ten
     # Perform matmul to map matches to class indices
     mapped_classes = matches @ class_indices  # Shape: (num_pixels)
 
-    # Reshape back to (Batch, Width, Height)
+    # Reshape back to (Batch, Height, Width)
     result = mapped_classes.view(data.shape[0], height, width).to(torch.long)
 
     return result
@@ -207,22 +206,22 @@ def convert_pred_to_img(prediction: torch.Tensor, class_to_pv: dict) -> Image:
     """
 
     # Validate input shape
-    assert len(prediction.shape) == 3, "Prediction must have shape (Channels, Width, Height)"
+    assert len(prediction.shape) == 3, "Prediction must have shape (Channels, Height, Width)"
     print(prediction.shape)
     C, H, W = prediction.shape
     prediction = prediction.cpu()  # Move back to CPU
 
-    # Permute tensor from (C, W, H) -> (W, H, C) for easier processing
-    prediction = prediction.permute(1, 2, 0)  # Shape: (W, H, C)
+    # Permute tensor from (C, H, W) -> (H, W, C) for easier processing
+    prediction = prediction.permute(1, 2, 0)  # Shape: (H, W, C)
 
     # Convert logits to probabilities using softmax
-    probabilities = nn.functional.softmax(prediction, dim=-1)  # Shape: (W, H, C)
+    probabilities = nn.functional.softmax(prediction, dim=-1)  # Shape: (H, W, C)
 
     # Find the class index with the highest probability for each pixel
-    class_indices = torch.argmax(probabilities, dim=-1)  # Shape: (W, H)
+    class_indices = torch.argmax(probabilities, dim=-1)  # Shape: (H, W)
 
     # Map class indices to RGB values
-    # (W, H) -> (W, H, 3), where 3 represents RGB channels
+    # (H, W) -> (H, W, 3), where 3 represents RGB channels
     mask_array = np.zeros((H, W, 3), dtype=np.uint8)  # Initialize array for RGB mask
     for class_idx, rgb in class_to_pv.items():
         mask_array[class_indices == class_idx] = rgb
@@ -236,18 +235,18 @@ def convert_mask_to_img(mask_tensor: torch.Tensor, class_to_pv: dict) -> Image:
     """
     Takes in a mask tensor and returns corresponding PIL.Image object
 
-    :param mask_tensor: A tensor of shape (Width, Height) of class idx
+    :param mask_tensor: A tensor of shape (Height, Width) of class idx
     :param class_to_pv: Dictionary mapping from class idx to RGB pixel values
     :return: Corresponding PIL.Image object
     """
-    assert len(mask_tensor.shape) == 2, "Mask tensor must have shape (Width, Height)"
+    assert len(mask_tensor.shape) == 2, "Mask tensor must have shape (Height, Width)"
     print(2)
     print(mask_tensor.shape)
     H, W = mask_tensor.shape
     mask_tensor = mask_tensor.cpu()  # Move back to CPU
 
     # Map class indices to RGB values
-    # (W, H) -> (W, H, 3), where 3 represents RGB channels
+    # (H, W) -> (H, W, 3), where 3 represents RGB channels
     mask_array = np.zeros((H, W, 3), dtype=np.uint8)  # Initialize array for RGB mask
     for class_idx, rgb in class_to_pv.items():
         mask_array[mask_tensor == class_idx] = rgb
@@ -302,10 +301,10 @@ def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_ite
     return out
 
 
-def iou_metric(pred_tensor, mask_tensor, num_classes, ious, device):
+def iou_metric(pred_tensor, mask_tensor, num_classes, ious):
 
     assert len(pred_tensor.shape) == 4 and len(mask_tensor.shape) == 3, \
-        f"Prediction tensor should be of shape (B, C, W, H) and Mask tensor should be of shape (B, W, H)!"
+        f"Prediction tensor should be of shape (B, C, H, W) and Mask tensor should be of shape (B, H, W)!"
 
     pred_tensor = nn.functional.softmax(pred_tensor, dim=1)  # Softmax across the channels dimension
     pred_tensor = torch.argmax(pred_tensor, dim=1)  # Get the highest probability
