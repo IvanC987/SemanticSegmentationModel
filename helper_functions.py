@@ -308,7 +308,7 @@ def iou_metric(pred_tensor, mask_tensor, num_classes, ious, device):
     for c in range(num_classes):
         intersection = torch.sum((pred_tensor == c) & (mask_tensor == c))
         union = torch.sum((pred_tensor == c) | (mask_tensor == c))
-        ious += (intersection.float() / (union.float() if union.float() != 0 else torch.tensor(1e-6, device=device)))
+        ious[c] += (intersection.float() / (union.float() if union.float() != 0 else torch.tensor(1e-6, device=device)))
 
 
 if __name__ == "__main__":

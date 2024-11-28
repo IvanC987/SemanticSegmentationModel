@@ -118,8 +118,9 @@ for step in range(training_iterations):
         if display_all_ious:
             all_ious = []
             for iou in out["ious"]:
-                all_ious.append(round(iou, 4))
+                all_ious.append(round(iou.item(), 4))
             print(f"all_ious={all_ious}")
+        print("\n")
 
         start = time.time()
 
