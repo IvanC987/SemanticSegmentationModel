@@ -118,7 +118,7 @@ def convert_image_to_tensors(images: list[Image]) -> torch.tensor:
 
     width, height = images[0].size
     tensor_list = [torch.tensor(image.getdata(), dtype=torch.float32) for image in images]
-    tensor_list = [tensor.reshape(width, height, 3).permute(2, 0, 1) for tensor in tensor_list]
+    tensor_list = [tensor.reshape(height, width, 3).permute(2, 0, 1) for tensor in tensor_list]
     return torch.stack(tensor_list, dim=0)
 
 
@@ -138,7 +138,7 @@ def convert_masks_to_classes_(masks: list[Image], pv_to_class: dict) -> torch.te
 
     width, height = masks[0].size
 
-    tensor_list = [torch.tensor(mask.getdata()).reshape(width, height, 3) for mask in masks]
+    tensor_list = [torch.tensor(mask.getdata()).reshape(height, width, 3) for mask in masks]
     data = torch.stack(tensor_list, dim=0)  # Stack along 0th dimension as batch dimension
 
     # Now, data is of shape (Batch, Width, Height, Channels)
@@ -170,7 +170,7 @@ def convert_masks_to_classes(masks: list[Image], pv_to_class: dict) -> torch.Ten
     width, height = masks[0].size
 
     # Convert images to tensor of shape (Batch, Width, Height, Channels)
-    tensor_list = [torch.tensor(mask.getdata()).reshape(width, height, 3) for mask in masks]
+    tensor_list = [torch.tensor(mask.getdata()).reshape(height, width, 3) for mask in masks]
     data = torch.stack(tensor_list, dim=0)  # Stack along 0th dimension as batch dimension
 
     # Prepare a mapping tensor for efficient pixel-to-class conversion
@@ -192,7 +192,7 @@ def convert_masks_to_classes(masks: list[Image], pv_to_class: dict) -> torch.Ten
     mapped_classes = matches @ class_indices  # Shape: (num_pixels)
 
     # Reshape back to (Batch, Width, Height)
-    result = mapped_classes.view(data.shape[0], width, height).to(torch.long)
+    result = mapped_classes.view(data.shape[0], height, width).to(torch.long)
 
     return result
 
@@ -208,7 +208,8 @@ def convert_pred_to_img(prediction: torch.Tensor, class_to_pv: dict) -> Image:
 
     # Validate input shape
     assert len(prediction.shape) == 3, "Prediction must have shape (Channels, Width, Height)"
-    C, W, H = prediction.shape
+    print(prediction.shape)
+    C, H, W = prediction.shape
     prediction = prediction.cpu()  # Move back to CPU
 
     # Permute tensor from (C, W, H) -> (W, H, C) for easier processing
@@ -222,10 +223,11 @@ def convert_pred_to_img(prediction: torch.Tensor, class_to_pv: dict) -> Image:
 
     # Map class indices to RGB values
     # (W, H) -> (W, H, 3), where 3 represents RGB channels
-    mask_array = np.zeros((W, H, 3), dtype=np.uint8)  # Initialize array for RGB mask
+    mask_array = np.zeros((H, W, 3), dtype=np.uint8)  # Initialize array for RGB mask
     for class_idx, rgb in class_to_pv.items():
         mask_array[class_indices == class_idx] = rgb
 
+    print(mask_array.shape)
     # Convert the mask array to a PIL.Image
     return Image.fromarray(mask_array)
 
@@ -239,15 +241,18 @@ def convert_mask_to_img(mask_tensor: torch.Tensor, class_to_pv: dict) -> Image:
     :return: Corresponding PIL.Image object
     """
     assert len(mask_tensor.shape) == 2, "Mask tensor must have shape (Width, Height)"
-    W, H = mask_tensor.shape
+    print(2)
+    print(mask_tensor.shape)
+    H, W = mask_tensor.shape
     mask_tensor = mask_tensor.cpu()  # Move back to CPU
 
     # Map class indices to RGB values
     # (W, H) -> (W, H, 3), where 3 represents RGB channels
-    mask_array = np.zeros((W, H, 3), dtype=np.uint8)  # Initialize array for RGB mask
+    mask_array = np.zeros((H, W, 3), dtype=np.uint8)  # Initialize array for RGB mask
     for class_idx, rgb in class_to_pv.items():
         mask_array[mask_tensor == class_idx] = rgb
 
+    print(mask_array.shape)
     # Convert the mask array to a PIL.Image
     return Image.fromarray(mask_array)
 
@@ -308,7 +313,7 @@ def iou_metric(pred_tensor, mask_tensor, num_classes, ious, device):
     for c in range(num_classes):
         intersection = torch.sum((pred_tensor == c) & (mask_tensor == c))
         union = torch.sum((pred_tensor == c) | (mask_tensor == c))
-        ious[c] += (intersection.float() / (union.float() if union.float() != 0 else torch.tensor(1e-6, device=device)))
+        ious[c] += (intersection.float() / (union.float() + 1e-6))
 
 
 if __name__ == "__main__":
