@@ -22,11 +22,13 @@ class ConvBlock(nn.Module):
             nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=1, padding="same"),
             nn.BatchNorm2d(num_features=out_channels),
             nn.ReLU(),
+            nn.Dropout2d(p=0.1),
 
             # For second convolution, the number of filters doesn't change
             nn.Conv2d(in_channels=out_channels, out_channels=out_channels, kernel_size=3, stride=1, padding="same"),
             nn.BatchNorm2d(num_features=out_channels),
             nn.ReLU(),
+            nn.Dropout2d(p=0.1),
         )
 
     def forward(self, x):

@@ -8,7 +8,6 @@ from helper_functions import pixel_mappings, update_learning_rate, convert_pred_
 from dataset_loader import DatasetLoader
 
 
-# Try adding dropout layers later on in unet
 
 
 # Create required parameters
