@@ -28,5 +28,4 @@ class CombinedLoss(nn.Module):
 
         # Based on my dataset's training output, a static 2x contribution to dice seems like a good value
         final_loss = cross_entropy_loss + 2 * dice_loss
-        print(f"{cross_entropy_loss=:.4f}, {dice_loss=:.4f}, {final_loss=:.4f}")
-        return final_loss
+        return cross_entropy_loss, dice_loss, final_loss

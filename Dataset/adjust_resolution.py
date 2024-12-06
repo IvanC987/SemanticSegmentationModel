@@ -56,7 +56,7 @@ def clear_directory(directory):
         print(f"Exception occurred: {e}")
 
 
-def scale_and_save_image(path_to_image, save_path):
+def scale_and_save_image(path_to_image, save_path, new_resolution):
     image = Image.open(path_to_image).convert("RGB")
 
     # 750 is specific to this dataset I have. Do adjust as needed
@@ -119,5 +119,5 @@ if __name__ == "__main__":
         img_save_path = os.path.join(output_img_dir, f"{img_basename}{img_ext}")
         msk_save_path = os.path.join(output_msk_dir, f"{msk_basename}{msk_ext}")
 
-        scale_and_save_image(img_path, img_save_path)
-        scale_and_save_image(mask_path, msk_save_path)
+        scale_and_save_image(img_path, img_save_path, new_resolution)
+        scale_and_save_image(mask_path, msk_save_path, new_resolution)

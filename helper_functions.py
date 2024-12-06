@@ -263,54 +263,77 @@ def evaluate_loss(unet: Module, criterion: Module, dataset_loader: any, eval_ite
     :param eval_iterations: Number of eval iterations
     :param num_classes: Number of classes
     :param device: Device used (i.e. cpu or cuda)
-    :return: Dict in format of {"train": train_loss, "val": val_loss}
+    :return: A Dict containing calculated metrics
     """
 
     out = {}
     unet.eval()
 
-    ious = torch.zeros(num_classes, dtype=torch.float, device=device)
-    total_batches = 0
+    # Track intersections and unions
+    total_intersections = torch.zeros(num_classes, dtype=torch.float, device=device)
+    total_unions = torch.zeros(num_classes, dtype=torch.float, device=device)
+
     for split in ["train", "val"]:
         all_losses = torch.zeros(eval_iterations)
         for k in range(eval_iterations):
-            image_tensors, mask_tensors = dataset_loader.get_batch(train=split == "train")
+            image_tensors, mask_tensors = dataset_loader.get_batch(train=(split == "train"))
             image_tensors = image_tensors.to(device)
             mask_tensors = mask_tensors.to(device)
 
             logits = unet(image_tensors)
-            loss = criterion(logits, mask_tensors)
+
+            _, _, loss = criterion(logits, mask_tensors)
             all_losses[k] = loss.item()
 
-            # Calculate IoU metric
-            iou_metric(pred_tensor=logits, mask_tensor=mask_tensors, num_classes=num_classes, ious=ious)
-            total_batches += len(mask_tensors)
+            # Accumulate intersection and union counts
+            iou_metric(
+                pred_tensor=logits,
+                mask_tensor=mask_tensors,
+                num_classes=num_classes,
+                total_intersections=total_intersections,
+                total_unions=total_unions
+            )
 
         out[split] = torch.mean(all_losses)
 
-    ious /= total_batches  # Average out the ious
-    out["ious"] = ious  # Save ious for each class
+    # Compute IoU from total intersections/unions
+    ious = total_intersections / (total_unions + 1e-6)
+    out["ious"] = ious
 
-    valid_ious = ious[ious > 0]  # Select IoU values greater than 0, so that classes that didn't appear doesn't drag down mean
-    mean_ious = torch.mean(valid_ious) if len(valid_ious) > 0 else torch.tensor(0.0, device=device)
+    valid_ious = ious[ious > 0]
+    mean_ious = valid_ious.mean() if len(valid_ious) > 0 else torch.tensor(0.0, device=device)
     out["mean_ious"] = mean_ious
 
     unet.train()
     return out
 
 
-def iou_metric(pred_tensor, mask_tensor, num_classes, ious):
+def iou_metric(pred_tensor: torch.Tensor, mask_tensor: torch.Tensor, num_classes: int,
+               total_intersections: torch.Tensor, total_unions: torch.Tensor) -> None:
+    """
+    :param pred_tensor: Prediction tensor from model
+    :param mask_tensor: Target Mask tensor
+    :param num_classes: Number of classes
+    :param total_intersections: Tensor used to track all intersections. Created in evaluate_loss() function above
+    :param total_unions: Tensor used to track all unions. Created in evaluate_loss() function above
+    :return: None
+    """
 
     assert len(pred_tensor.shape) == 4 and len(mask_tensor.shape) == 3, \
         f"Prediction tensor should be of shape (B, C, H, W) and Mask tensor should be of shape (B, H, W)!"
 
-    pred_tensor = nn.functional.softmax(pred_tensor, dim=1)  # Softmax across the channels dimension
-    pred_tensor = torch.argmax(pred_tensor, dim=1)  # Get the highest probability
+    # Predict class by selecting highest values, which equals highest prob
+    pred_tensor = torch.argmax(pred_tensor, dim=1)
+
+    # Flatten tensors to speed up intersection/union calculations
+    pred_flat = pred_tensor.view(-1)
+    mask_flat = mask_tensor.view(-1)
 
     for c in range(num_classes):
-        intersection = torch.sum((pred_tensor == c) & (mask_tensor == c))
-        union = torch.sum((pred_tensor == c) | (mask_tensor == c))
-        ious[c] += (intersection.float() / (union.float() + 1e-6))
+        intersection = torch.sum((pred_flat == c) & (mask_flat == c))
+        union = torch.sum((pred_flat == c) | (mask_flat == c))
+        total_intersections[c] += intersection.float()
+        total_unions[c] += union.float()
 
 
 if __name__ == "__main__":

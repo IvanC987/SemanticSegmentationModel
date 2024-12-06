@@ -17,7 +17,7 @@ print(f"Now using {device=}\n")
 
 batch_size = 12
 
-training_iterations = 1500
+training_iterations = 2500  # Around 5 epochs for Cityscapes dataset
 eval_interval = 50
 eval_iterations = 5
 
@@ -35,6 +35,7 @@ warmup_steps = 100
 decay_factor = 5e8
 
 display_all_ious = True  # Print out IoU of each class during evaluation
+print_all_losses = True  # Prints out all losses at every iteration, used for evaluating how the combined loss works
 
 image_dir = r"./Dataset/AugmentedImages"
 mask_dir = r"./Dataset/AugmentedMasks"
@@ -95,13 +96,15 @@ for step in range(training_iterations):
 
     # Pass the image tensors into the model, which will return logits tensor of shape (Batch, Channels, Width, Height)
     logits = unet(image_tensors)
-    loss = criterion(logits, mask_tensors)  # First, calculate the loss
+    cross_entropy_loss, dice_loss, loss = criterion(logits, mask_tensors)  # First, calculate the loss
 
     optimizer.zero_grad(set_to_none=True)  # Set previous gradients to none
     loss.backward()  # Backprop
     torch.nn.utils.clip_grad_norm_(unet.parameters(), 1.0)  # Clip grads for stable training
     optimizer.step()  # Adjust parameters
 
+    if print_all_losses:
+        print(f"{cross_entropy_loss=:.4f}, {dice_loss=:.4f}, {loss=:.4f}")
 
     if step % eval_interval == 0 or step == training_iterations - 1:
         out = evaluate_loss(unet=unet, criterion=criterion, dataset_loader=dataset_loader,
