@@ -16,12 +16,13 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Now using {device=}\n")
 
 batch_size = 12
+accum_steps = 4  # Number of times to accumulate gradients per iteration
 
-training_iterations = 2500  # Around 5 epochs for Cityscapes dataset
+training_iterations = 1250  # Around 10 epochs for Cityscapes dataset
 eval_interval = 50
 eval_iterations = 5
 
-save_model_interval = 400  # Interval of when to save the UNET model
+save_model_interval = 200  # Interval of when to save the UNET model
 
 # Saves image of pred_mask and actual_mask x times total during training, where x is the denominator
 save_pred_interval = training_iterations//50
@@ -84,27 +85,31 @@ start = time.time()
 pred_steps = 1  # This is just used for displaying mask at certain intervals
 
 for step in range(training_iterations):
+    optimizer.zero_grad(set_to_none=True)  # Set previous gradients to none
     update_learning_rate(optimizer=optimizer, training_step=step, base_lr=base_lr, min_lr=min_lr,
                          warmup_steps=warmup_steps, decay_factor=int(decay_factor))
 
-    # image_tensors.shape = (Batch, 3, Width, Height)
-    # mask_tensors.shape = (Batch, Width, Height)
-    image_tensors, mask_tensors = dataset_loader.get_batch(train=True)
-    image_tensors = image_tensors.to(device)
-    mask_tensors = mask_tensors.to(device)
+    for _ in range(accum_steps):
+        # image_tensors.shape = (Batch, 3, Width, Height)
+        # mask_tensors.shape = (Batch, Width, Height)
+        image_tensors, mask_tensors = dataset_loader.get_batch(train=True)
+        image_tensors = image_tensors.to(device)
+        mask_tensors = mask_tensors.to(device)
+
+        # Pass the image tensors into the model, which will return logits tensor of shape (Batch, Channels, Width, Height)
+        logits = unet(image_tensors)
+        cross_entropy_loss, dice_loss, loss = criterion(logits, mask_tensors)  # First, calculate the loss
+
+        loss_copy = loss.item()  # For printing if needed
+        loss /= accum_steps
+        loss.backward()
 
 
-    # Pass the image tensors into the model, which will return logits tensor of shape (Batch, Channels, Width, Height)
-    logits = unet(image_tensors)
-    cross_entropy_loss, dice_loss, loss = criterion(logits, mask_tensors)  # First, calculate the loss
-
-    optimizer.zero_grad(set_to_none=True)  # Set previous gradients to none
-    loss.backward()  # Backprop
     torch.nn.utils.clip_grad_norm_(unet.parameters(), 1.0)  # Clip grads for stable training
     optimizer.step()  # Adjust parameters
 
     if print_all_losses:
-        print(f"{cross_entropy_loss=:.4f}, {dice_loss=:.4f}, {loss=:.4f}")
+        print(f"{cross_entropy_loss=:.4f}, {dice_loss=:.4f}, {loss_copy=:.4f}")
 
     if step % eval_interval == 0 or step == training_iterations - 1:
         out = evaluate_loss(unet=unet, criterion=criterion, dataset_loader=dataset_loader,
