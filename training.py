@@ -104,8 +104,8 @@ for step in range(training_iterations):
 
         if print_all_losses:
             print(f"{cross_entropy_loss=:.4f}, {dice_loss=:.4f}, {loss=:.4f}")
-        
-        with open(loss_txt_path, "w") as f:
+
+        with open(loss_txt_path, "a") as f:
             f.write(f"{cross_entropy_loss:.4f},{dice_loss:.4f},{loss:.4f}\n")  # Save into CSV format to parse later
 
         loss /= accum_steps
