@@ -16,16 +16,12 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Now using {device=}\n")
 
 batch_size = 12
-accum_steps = 4  # Number of times to accumulate gradients per iteration
 
 training_iterations = 1250  # Around 10 epochs for Cityscapes dataset
+accum_steps = 4  # Number of times to accumulate gradients per iteration
+
 eval_interval = 10
 eval_iterations = 5
-
-save_model_interval = 100  # Interval of when to save the UNET model
-
-# Saves image of pred_mask and actual_mask x times total during training, where x is the denominator
-save_pred_interval = training_iterations//50
 
 # Fine-tuning lrs and warmup steps can be complicated, depending on lvl of detail.
 # I'm just choosing what I think is decent here. Feel free to adjust.
@@ -34,6 +30,12 @@ base_lr = 1e-3
 min_lr = 1e-4
 warmup_steps = 100
 decay_factor = 5e8
+
+
+
+save_model_interval = 100  # Interval of when to save the UNET model
+# Saves image of pred_mask and actual_mask x times total during training, where x is the denominator
+save_pred_interval = training_iterations//50
 
 display_all_ious = True  # Print out IoU of each class during evaluation
 print_all_losses = True  # Prints out all losses at every iteration, used for evaluating how the combined loss works

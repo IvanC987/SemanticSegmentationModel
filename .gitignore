@@ -4,7 +4,7 @@ Dataset/ScaledImages
 Dataset/ScaledMasks
 Dataset/OriginalImages
 Dataset/OriginalMasks
-TrainingOutput
+TrainingOutput/SavedPredictions
 Test1_SS.py
 Test2_SS.py
 *.pth
