@@ -89,7 +89,7 @@ class UNET(nn.Module):
         if x.shape[-2] % 16 != 0 or x.shape[-1] % 16 != 0:
             warnings.warn("\nInput data is not divisible by 16 along the width/height dimension"
                           "\nWould likely lead to errors. Highly recommended to resize image to fit this criteria"
-                          f"\nCurrent shape: {data.shape}")
+                          f"\nCurrent shape: {x.shape}")
 
         skip1, x = self.enc1(x)
         skip2, x = self.enc2(x)
