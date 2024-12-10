@@ -233,6 +233,7 @@ Finally, there are a few points that I would like to address:
 1. I will again reiterate that this is just a project that explores how semantic segmentation works and understand how underlying arch (U-Net) rather focusing on how well it performs
 2. For Cityscapes dataset, there is 30 classes, but I've filtered 6 that is underrepresented (Occurs once every so often) for better training
 3. The calculation of IoU metric is a bit skewed, as all classes are weighted equally in the mean_iou calculation. However since some of the classes are disproportionally represented. Some only have a handful of pixels per image compared to other classes which can take up over a quarter of it. The current model would focus much more on the larger contributor of the loss, thus mean_iou would be lowered by the rare pixels even though they don't occur very often.
+4. Just noticed...I forgot to scale the image tensors before passing it to UNet...erm...that might be a fairly large contributor to the loss staying so high. A bit too late to go back and retrain now. Oh well. ¯\_(ツ)_/¯
 
 ---
 
